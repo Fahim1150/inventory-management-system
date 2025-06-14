@@ -3,8 +3,6 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
 
-import static sun.net.www.MimeTable.loadTable;
-
 class ProductForm extends JFrame {
     private ProductService service = new ProductService();
     private JTable table;

@@ -7,7 +7,7 @@ public class DBConnection {
         try {
             Class.forName("org.sqlite.JDBC");
         } catch (ClassNotFoundException e) {
-            System.out.println("SQLite JDBC Driver not found");
+            System.err.println("SQLite JDBC Driver not found");
         }
     }
 
@@ -15,23 +15,39 @@ public class DBConnection {
         try {
             return DriverManager.getConnection(DB_URL);
         } catch (SQLException e) {
-            System.out.println("Connection Failed!");
+            System.err.println("Connection Failed!");
             e.printStackTrace();
             return null;
         }
     }
 
     public static void initializeDatabase() {
-        String sql = "CREATE TABLE IF NOT EXISTS products ("
+        String productsTable = "CREATE TABLE IF NOT EXISTS products ("
                 + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + "name TEXT NOT NULL, "
                 + "quantity INTEGER, "
                 + "price REAL"
                 + ")";
-        try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
+
+        String usersTable = "CREATE TABLE IF NOT EXISTS users ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + "username TEXT UNIQUE NOT NULL, "
+                + "password TEXT NOT NULL, "
+                + "role TEXT NOT NULL"
+                + ")";
+
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(productsTable);
+            stmt.execute(usersTable);
+
+            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM users WHERE username = 'admin'");
+            if (rs.getInt(1) == 0) {
+                stmt.executeUpdate("INSERT INTO users(username, password, role) VALUES " +
+                        "('admin', 'admin123', 'admin')");
+            }
         } catch (SQLException e) {
-            System.out.println("Database Initialization Failed!");
+            System.err.println("Database Initialization Failed!");
             e.printStackTrace();
         }
     }

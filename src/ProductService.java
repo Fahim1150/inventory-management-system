@@ -1,15 +1,14 @@
 import java.sql.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProductService {
-
     public void addProduct(Product product) {
         try (Connection conn = DBConnection.connect()) {
             String sql;
             PreparedStatement pstmt;
 
             if (product.getId() > 0) {
-                // Insert with specified ID
                 sql = "INSERT INTO products(id, name, quantity, price) VALUES (?, ?, ?, ?)";
                 pstmt = conn.prepareStatement(sql);
                 pstmt.setInt(1, product.getId());
@@ -17,14 +16,12 @@ public class ProductService {
                 pstmt.setInt(3, product.getQuantity());
                 pstmt.setDouble(4, product.getPrice());
             } else {
-                // Insert without ID, let DB auto-generate
                 sql = "INSERT INTO products(name, quantity, price) VALUES (?, ?, ?)";
                 pstmt = conn.prepareStatement(sql);
                 pstmt.setString(1, product.getName());
                 pstmt.setInt(2, product.getQuantity());
                 pstmt.setDouble(3, product.getPrice());
             }
-
             pstmt.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();
@@ -72,5 +69,26 @@ public class ProductService {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public List<Product> searchProducts(String searchTerm) {
+        List<Product> results = new ArrayList<>();
+        try (Connection conn = DBConnection.connect()) {
+            String sql = "SELECT * FROM products WHERE name LIKE ?";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, "%" + searchTerm + "%");
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                results.add(new Product(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getDouble("price"),
+                        rs.getInt("quantity")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return results;
     }
 }

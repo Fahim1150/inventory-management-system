@@ -9,26 +9,27 @@ public class ProductForm extends JFrame {
     private JTextField nameTextField;
     private JTextField priceTextField;
     private JTextField quantityTextField;
-    private JButton addButton, updateButton, deleteButton;
+    private JButton addButton, updateButton, deleteButton, searchButton;
     private JTable productTable;
     private DefaultTableModel tableModel;
-
     private ProductService productService;
+    private String userRole;
 
-    public ProductForm() {
+    public ProductForm(String userRole) {
+        this.userRole = userRole;
         productService = new ProductService();
 
-        setTitle("Inventory Management");
+        setTitle("Inventory Management - Logged in as: " + userRole);
         setSize(700, 450);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
         // Colors
-        Color backgroundColor = new Color(230, 230, 230); // light grey background for input panel
-        Color labelColor = new Color(45, 60, 80);         // dark blue-grey labels
-        Color fieldBackgroundColor = Color.WHITE;         // white for editable fields
-        Color fieldTextColor = new Color(80, 80, 90);     // dark text for fields
+        Color backgroundColor = new Color(0, 150, 230);
+        Color labelColor = new Color(45, 60, 80);
+        Color fieldBackgroundColor = Color.WHITE;
+        Color fieldTextColor = new Color(80, 80, 90);
         Color buttonBackgroundColor = new Color(45, 60, 80);
         Color buttonForegroundColor = Color.WHITE;
         Color tableBackgroundColor = new Color(220, 230, 240);
@@ -41,7 +42,7 @@ public class ProductForm extends JFrame {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         inputPanel.setBackground(backgroundColor);
 
-        // ID Label and TextField (now editable)
+        // ID Label and TextField
         JLabel idLabel = new JLabel("ID:");
         idLabel.setForeground(labelColor);
         inputPanel.add(idLabel);
@@ -94,13 +95,18 @@ public class ProductForm extends JFrame {
         deleteButton.setBackground(buttonBackgroundColor);
         deleteButton.setForeground(buttonForegroundColor);
 
+        searchButton = new JButton("Search");
+        searchButton.setBackground(buttonBackgroundColor);
+        searchButton.setForeground(buttonForegroundColor);
+
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         buttonPanel.setBackground(backgroundColor);
         buttonPanel.add(addButton);
         buttonPanel.add(updateButton);
         buttonPanel.add(deleteButton);
+        buttonPanel.add(searchButton);
 
-        inputPanel.add(new JLabel());  // filler cell
+        inputPanel.add(new JLabel());
         inputPanel.add(buttonPanel);
 
         add(inputPanel, BorderLayout.NORTH);
@@ -108,7 +114,6 @@ public class ProductForm extends JFrame {
         // Table for product list
         String[] columns = {"ID", "Name", "Price", "Quantity"};
         tableModel = new DefaultTableModel(columns, 0) {
-            // Make cells non-editable
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
@@ -126,28 +131,27 @@ public class ProductForm extends JFrame {
         // Load existing products into table
         loadTable();
 
-        // Add button action
+        // Button actions
         addButton.addActionListener(e -> {
             try {
                 addProduct();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Please enter valid price, quantity and ID (if provided).", "Input Error", JOptionPane.ERROR_MESSAGE);
+                showError("Please enter valid price, quantity and ID (if provided).");
             }
         });
 
-        // Update button action
         updateButton.addActionListener(e -> {
             try {
                 updateProduct();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Please select a product and enter valid ID, price and quantity.", "Input Error", JOptionPane.ERROR_MESSAGE);
+                showError("Please select a product and enter valid ID, price and quantity.");
             }
         });
 
-        // Delete button action
         deleteButton.addActionListener(e -> deleteProduct());
+        searchButton.addActionListener(e -> openSearchWindow());
 
-        // Table row click to load data into inputs
+        // Table row selection
         productTable.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 int selectedRow = productTable.getSelectedRow();
@@ -159,24 +163,26 @@ public class ProductForm extends JFrame {
                 }
             }
         });
+
+        // Role-based restrictions
+        if ("user".equals(userRole)) {
+            addButton.setEnabled(false);
+            updateButton.setEnabled(false);
+            deleteButton.setEnabled(false);
+        }
     }
 
     private void loadTable() {
         tableModel.setRowCount(0);
         List<Product> products = productService.getAllProducts();
         for (Product p : products) {
-            Object[] row = {p.getId(), p.getName(), p.getPrice(), p.getQuantity()};
-            tableModel.addRow(row);
+            tableModel.addRow(new Object[]{p.getId(), p.getName(), p.getPrice(), p.getQuantity()});
         }
     }
 
     private void addProduct() {
-        // Allow user to input ID manually or leave blank for auto-increment
         String idText = idTextField.getText().trim();
-        int id = 0;
-        if (!idText.isEmpty()) {
-            id = Integer.parseInt(idText);
-        }
+        int id = idText.isEmpty() ? 0 : Integer.parseInt(idText);
         String name = nameTextField.getText();
         double price = Double.parseDouble(priceTextField.getText());
         int quantity = Integer.parseInt(quantityTextField.getText());
@@ -201,13 +207,63 @@ public class ProductForm extends JFrame {
 
     private void deleteProduct() {
         if (idTextField.getText().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Select a product to delete.", "Warning", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Select a product to delete.",
+                    "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
         int id = Integer.parseInt(idTextField.getText());
         productService.deleteProduct(id);
         loadTable();
         clearInputs();
+    }
+
+    private void openSearchWindow() {
+        JDialog searchDialog = new JDialog(this, "Search Products", false);
+        searchDialog.setSize(500, 400);
+        searchDialog.setLocationRelativeTo(this);
+
+        JPanel searchPanel = new JPanel(new BorderLayout());
+        searchPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // Search input panel
+        JPanel inputPanel = new JPanel();
+        JTextField searchField = new JTextField(20);
+        JButton searchActionButton = new JButton("Search");
+        inputPanel.add(new JLabel("Search:"));
+        inputPanel.add(searchField);
+        inputPanel.add(searchActionButton);
+
+        // Results table
+        DefaultTableModel searchModel = new DefaultTableModel(
+                new String[]{"ID", "Name", "Price", "Quantity"}, 0);
+        JTable resultsTable = new JTable(searchModel);
+        JScrollPane scrollPane = new JScrollPane(resultsTable);
+
+        searchPanel.add(inputPanel, BorderLayout.NORTH);
+        searchPanel.add(scrollPane, BorderLayout.CENTER);
+
+        searchActionButton.addActionListener(e -> {
+            String searchTerm = searchField.getText().trim();
+            if (!searchTerm.isEmpty()) {
+                List<Product> results = productService.searchProducts(searchTerm);
+                searchModel.setRowCount(0);
+                for (Product p : results) {
+                    searchModel.addRow(new Object[]{
+                            p.getId(),
+                            p.getName(),
+                            p.getPrice(),
+                            p.getQuantity()
+                    });
+                }
+            }
+        });
+
+        // Add Enter key listener to search field
+        searchField.addActionListener(e -> searchActionButton.doClick());
+
+        searchDialog.add(searchPanel);
+        searchDialog.setVisible(true);
     }
 
     private void clearInputs() {
@@ -217,10 +273,7 @@ public class ProductForm extends JFrame {
         quantityTextField.setText("");
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            ProductForm form = new ProductForm();
-            form.setVisible(true);
-        });
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Input Error", JOptionPane.ERROR_MESSAGE);
     }
 }

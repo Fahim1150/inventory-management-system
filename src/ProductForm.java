@@ -149,7 +149,6 @@ public class ProductForm extends JFrame {
         });
 
         deleteButton.addActionListener(e -> deleteProduct());
-        searchButton.addActionListener(e -> openSearchWindow());
 
         // Table row selection
         productTable.addMouseListener(new MouseAdapter() {
@@ -171,6 +170,8 @@ public class ProductForm extends JFrame {
             deleteButton.setEnabled(false);
         }
     }
+
+
 
     private void loadTable() {
         tableModel.setRowCount(0);
@@ -218,53 +219,6 @@ public class ProductForm extends JFrame {
         clearInputs();
     }
 
-    private void openSearchWindow() {
-        JDialog searchDialog = new JDialog(this, "Search Products", false);
-        searchDialog.setSize(500, 400);
-        searchDialog.setLocationRelativeTo(this);
-
-        JPanel searchPanel = new JPanel(new BorderLayout());
-        searchPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        // Search input panel
-        JPanel inputPanel = new JPanel();
-        JTextField searchField = new JTextField(20);
-        JButton searchActionButton = new JButton("Search");
-        inputPanel.add(new JLabel("Search:"));
-        inputPanel.add(searchField);
-        inputPanel.add(searchActionButton);
-
-        // Results table
-        DefaultTableModel searchModel = new DefaultTableModel(
-                new String[]{"ID", "Name", "Price", "Quantity"}, 0);
-        JTable resultsTable = new JTable(searchModel);
-        JScrollPane scrollPane = new JScrollPane(resultsTable);
-
-        searchPanel.add(inputPanel, BorderLayout.NORTH);
-        searchPanel.add(scrollPane, BorderLayout.CENTER);
-
-        searchActionButton.addActionListener(e -> {
-            String searchTerm = searchField.getText().trim();
-            if (!searchTerm.isEmpty()) {
-                List<Product> results = productService.searchProducts(searchTerm);
-                searchModel.setRowCount(0);
-                for (Product p : results) {
-                    searchModel.addRow(new Object[]{
-                            p.getId(),
-                            p.getName(),
-                            p.getPrice(),
-                            p.getQuantity()
-                    });
-                }
-            }
-        });
-
-        // Add Enter key listener to search field
-        searchField.addActionListener(e -> searchActionButton.doClick());
-
-        searchDialog.add(searchPanel);
-        searchDialog.setVisible(true);
-    }
 
     private void clearInputs() {
         idTextField.setText("");
